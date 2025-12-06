@@ -12,4 +12,4 @@ test-%: tst/%.input.txt tst/%.expected.txt safe
 	@(cmp --silent <(cat $< | ./safe) $(word 2,$^) || echo -e "\e[31mFAIL\e[0m" $@) && diff -u <(cat $< | ./safe) $(word 2,$^) || true
 
 clean:
-	rm -f safe
+	rm -f safe src/safe.hi src/safe.o
