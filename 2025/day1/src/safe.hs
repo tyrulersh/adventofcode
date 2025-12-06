@@ -1,15 +1,18 @@
 main :: IO ()
-main = interact (show . (enterCombination (50, 0)) . words)
+main = interact (show . (enterCombination (CombinationState 50 0) . words))
 
 -- The state of the application of a combination. The first is the number to
 -- which the dial is pointed. The second is the accumulation of the number of
 -- times a zero is seen.
-type CombinationState = (Int, Int)
+data CombinationState = CombinationState {
+    position :: Int,
+    zeros :: Int
+} deriving (Show)
 
 enterCombination :: CombinationState -> [String] -> CombinationState
-enterCombination start x = foldl rotate' start x
-    where rotate' (position, zeros) move = toStateWithZerosCheck zeros $ rotate position move
-          toStateWithZerosCheck currentZeros nextPosition = (nextPosition, currentZeros + if nextPosition == 0 then 1 else 0)
+enterCombination start = foldl rotate' start
+    where rotate' state move = toStateWithZerosCheck (zeros state) $ rotate (position state) move
+          toStateWithZerosCheck currentZeros nextPosition = CombinationState nextPosition (currentZeros + if nextPosition == 0 then 1 else 0)
 
 rotate :: Int -> String -> Int
 rotate currentPosition ('L':cs) = mod (currentPosition - n) 100
