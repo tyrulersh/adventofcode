@@ -8,8 +8,10 @@ $(PROGRAM): src/$(PROGRAM).hs
 test: $(TEST_CASES)
 
 test-%: tst/%.input.txt tst/%.expected.txt $(PROGRAM)
-	@(cmp --silent <(cat $< | ./$(PROGRAM)) $(word 2,$^) && echo -e "\e[32mPASS\e[0m" $@) || true
-	@(cmp --silent <(cat $< | ./$(PROGRAM)) $(word 2,$^) || echo -e "\e[31mFAIL\e[0m" $@) && diff -u <(cat $< | ./$(PROGRAM)) $(word 2,$^) || true
+	@temp_file=`mktemp`; \
+	    cat $< | ./$(PROGRAM) > $$temp_file; \
+	    (cmp --silent $$temp_file $(word 2,$^) && echo -e "\e[32mPASS\e[0m" $@) \
+			    || (echo -e "\e[31mFAIL\e[0m" $@ && diff -u $$temp_file $(word 2,$^)) || true
 
 clean:
 	rm -f $(PROGRAM) src/$(PROGRAM).hi src/$(PROGRAM).o
