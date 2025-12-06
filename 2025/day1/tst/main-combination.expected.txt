@@ -1,0 +1,1 @@
+CombinationState {position = 42, zeros = 989, allZeros = 5941}
