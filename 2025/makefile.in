@@ -3,7 +3,7 @@ TEST_CASES = $(patsubst tst/%.input.txt,test-%,$(wildcard tst/*.input.txt))
 all: test
 
 $(PROGRAM): src/$(PROGRAM).hs
-	ghc -o $@ $<
+	ghc -dynamic -o $@ $<
 
 test: $(TEST_CASES)
 
