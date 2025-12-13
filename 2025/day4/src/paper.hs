@@ -4,7 +4,9 @@ import Data.List (intercalate)
 main :: IO ()
 main = interact (show . selector . words)
   where selector ("part1":ws) = part1 ws
-        part1 = sum . map sum . rolls . parser
+        selector ("part2":ws) = part2 ws
+        part1 = sumGrid . accessibleRolls . parser
+        part2 = sum . takeWhile (/= 0) . map sumGrid . unloads . parser
 
 type ExternalGrid = [String]
 type Grid = [[Int]]
@@ -14,16 +16,29 @@ type Rule = NeighborHood -> Int
 type Parser = ExternalGrid -> Grid
 type Reader = Grid -> [String]
 
+-- gets the sequence of unloaded accessible rolls, infinite list
+unloads :: Grid -> [Grid]
+unloads grid = zipWith unloadedItems unloadResults (tail unloadResults)
+  where unloadResults = iterate unloadAccessible grid
+        -- Determines which items were unloaded by subtracting those that remain from those that were there
+        unloadedItems = zipWithGrid (-)
+
+unloadAccessible :: Grid -> Grid
+unloadAccessible grid = zipWithGrid (-) grid $ accessibleRolls grid
+
 parser :: Parser
 parser = mapGrid parser'
   where parser' '@' = 1
         parser' '.' = 0
 
-rolls :: Grid -> Grid
-rolls grid = zipWithGrid (*) grid $ mapGrid fewerThanFourRule neighborhoodsGrid
+accessibleRolls :: Grid -> Grid
+accessibleRolls grid = zipWithGrid (*) grid $ mapGrid fewerThanFourRule neighborhoodsGrid
   where neighborhoodsGrid = mapGrid (neighbors grid) indexGrid
         indexGrid = zipWith indexer grid [0..]
         indexer row rowIndex = take (length row) $ zip (repeat rowIndex) [0..]
+
+sumGrid :: Grid -> Int
+sumGrid = sum . concat
 
 zipWithGrid :: (Int -> Int -> Int) -> Grid -> Grid -> Grid
 zipWithGrid f = zipWith (zipWith f)
