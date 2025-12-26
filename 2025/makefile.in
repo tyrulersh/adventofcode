@@ -1,17 +1,30 @@
 TEST_CASES = $(patsubst tst/%.input.txt,test-%,$(wildcard tst/*.input.txt))
+SH_TEST_CASES = $(patsubst tst/%.test.sh,sh-test-%,$(wildcard tst/*.test.sh))
 
 all: test
 
 $(PROGRAM): src/$(PROGRAM).hs
 	ghc -dynamic -o $@ $<
 
-test: $(TEST_CASES)
+test: $(TEST_CASES) $(SH_TEST_CASES)
 
 test-%: tst/%.input.txt tst/%.expected.txt $(PROGRAM)
 	@temp_file=`mktemp`; \
 	    cat $< | ./$(PROGRAM) > $$temp_file; \
 	    (cmp --silent $$temp_file $(word 2,$^) && echo -e "\e[32mPASS\e[0m" $@) \
 			    || (echo -e "\e[31mFAIL\e[0m" $@ && diff -u $$temp_file $(word 2,$^)) || true
+
+# can execute shells scripts for testing instead of input output testing, e.g. "assert output is less than X"
+# Semantics:
+# `bash tst/foo.test.sh input` - writes a test case input to STDOUT, this makefile will run it through the program
+# `bash tst/foo.test.sh assert` - the makefile will pass the output of the program on STDIN, and the test script will assert
+#     something about it. The test script will exit with code zero if the test passes and writes nothing to STDOUT. On
+#     case failure, it will exit with non-zero exit code and write any failure messaging it wants to STDOUT.
+sh-test-%: tst/%.test.sh $(PROGRAM)
+	@assertion_message=`mktemp`; \
+		bash $< input | ./$(PROGRAM) | (bash $< assert > $$assertion_message && echo -e "\e[32mPASS\e[0m" $@) \
+			    || (echo -e "\e[31mFAIL\e[0m" $@ && cat $$assertion_message) \
+				|| true
 
 clean:
 	rm -f $(PROGRAM) src/$(PROGRAM).hi src/$(PROGRAM).o
