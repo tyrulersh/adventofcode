@@ -1,6 +1,5 @@
 import Data.List (nub, sort)
 import Data.List.Split (splitOn)
-import Debug.Trace
 
 main :: IO ()
 main = interact (selector . words)
@@ -23,21 +22,21 @@ parse = foldl combine ([],[]) . map singleton
 combine :: DB -> DB -> DB
 combine (a,b) (x,y) = (a++x,b++y)
 
---freshies :: DB -> [Integer]
---freshies ([],_) = []
---freshies (x:xs,_) = nub $ fullRange x ++ freshies (xs,[])
---  where fullRange (low,high) = takeWhile ((>=) high) [low..]
-
 freshies :: DB -> Integer
 freshies = freshies' . fst
   where freshies' = sum . map rangeSize . contiguate . sort
 
 contiguate :: Fresh -> Fresh
-contiguate l = foldr reducer [last l] l
+contiguate l = foldr reducer [head l] $ reverse l
   where reducer next accum = mergeIf next (head accum) ++ tail accum
-        mergeIf t u@(x,y) = if x `inn` t || y `inn` t then [merge t u] else [t,u]
-        inn x (a,b) = x >= a && x <= b
+        mergeIf t u = if t `intersects` u then [merge t u] else [t,u]
         merge (a,b) (x,y) = (min a x, max b y)
+
+intersects :: (Integer,Integer) -> (Integer,Integer) -> Bool
+intersects v@(a,b) w@(x,y) = x `inn` v || y `inn` v || a `inn` w || b `inn` w
+
+inn :: Integer -> (Integer,Integer) -> Bool
+inn x (a,b) = x >= a && x <= b
 
 rangeSize :: (Integer,Integer) -> Integer
 rangeSize (x,y) = y - x + 1
