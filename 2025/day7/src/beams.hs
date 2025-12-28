@@ -1,12 +1,16 @@
-import Data.List (nub, sort)
+import Data.List (nub, sort, elemIndices, elemIndex)
 
 main :: IO ()
 main = interact (selector . lines)
   where selector ("part1":ws) = show $ part1 ws
-        selector ("part2":ws) = "123"
+        selector ("part2":ws) = show $ part2 ws
 
 part1 :: [String] -> Int
-part1 (l:ls) = walk ls l 0
+part1 (l:ls) = walk ls (map sToPipe l) 0
+
+sToPipe :: Char -> Char
+sToPipe 'S' = '|'
+sToPipe c = c
 
 walk :: [String] -> String -> Int -> Int
 walk [] _ accum = accum
@@ -17,7 +21,7 @@ walk (x:xs) previous accum = walk xs next (accum + splits)
 -- step previous current = (next, numberOfSplits)
 step :: String -> String -> (String,Int)
 step previous current = (current', length splitIndices)
-  where beamIndices = [i | (x,i) <- (zip previous [0..]), x == '|' || x == 'S']
+  where beamIndices = elemIndices '|' previous
         splitIndices = [i | i <- beamIndices, current !! i == '^']
         continuences = [i | i <- beamIndices, current !! i == '.']
         -- indices of all beams in new row resulting from a split
@@ -30,3 +34,15 @@ step previous current = (current', length splitIndices)
           | i < x = c:(overlay cs beams)
           | i == x = '|':(overlay cs xs)
           -- otherwise isn't possible, let it fail if it happens
+
+part2 :: [String] -> Int
+part2 (l:ls) = timelines ls i
+  where (Just i) = elemIndex 'S' l
+
+-- main solution to part2: figuring out the number of paths
+timelines :: [String] -> Int -> Int
+timelines [] _ = 1
+timelines (x:xs) i
+  | i >= length x = 0
+  | x !! i == '^' = (timelines xs (i-1)) + (timelines xs (i+1))
+  | otherwise = timelines xs i
