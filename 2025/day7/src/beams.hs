@@ -36,13 +36,16 @@ step previous current = (current', length splitIndices)
           -- otherwise isn't possible, let it fail if it happens
 
 part2 :: [String] -> Int
-part2 (l:ls) = timelines ls i
-  where (Just i) = elemIndex 'S' l
+part2 (l:ls) = timelines ones (reverse (l:ls)) !! i -- reverse for bottom-up dynamic programming
+  where ones = take (length l) (repeat 1)
+        (Just i) = elemIndex 'S' l
 
 -- main solution to part2: figuring out the number of paths
-timelines :: [String] -> Int -> Int
-timelines [] _ = 1
-timelines (x:xs) i
-  | i >= length x = 0
-  | x !! i == '^' = (timelines xs (i-1)) + (timelines xs (i+1))
-  | otherwise = timelines xs i
+timelines :: [Int] -> [String] -> [Int]
+timelines accum [] = accum
+timelines accum (x:xs) = timelines accum' xs
+  where accum' = zipWith3 zipper x accum [0..]
+        zipper '^' _ _ = 0 -- zero for both input and output represents a splitter
+        zipper  _  0 i = safeIndex accum (i-1) + safeIndex accum (i+1)
+        zipper  _  a _ = a
+        safeIndex xs i = if i < 0 || i >= (length xs) then 0 else xs !! i
