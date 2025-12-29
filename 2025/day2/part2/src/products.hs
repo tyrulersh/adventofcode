@@ -1,7 +1,10 @@
 import Data.Char (isSpace)
+import Debug.Trace
 
 main :: IO ()
-main = interact (show . sum . filter invalid . concat . map readRange . map (filter (\x -> not $ isSpace x)) . splitOn ',')
+main = interact (show . sum . invalidFilter . concat . map readRange . map (filter (\x -> not $ isSpace x)) . splitOn ',')
+  where invalidFilter xs = filter (invalid (cacheFactorsFor xs)) xs
+        cacheFactorsFor xs = take ((length $ show $ maximum xs) + 1) allFactors
 
 splitOn :: Char -> String -> [String]
 splitOn c list = l : remainder
@@ -16,13 +19,17 @@ readRange range = [start .. end]
         start = read startString
         end = read (tail minusEnd)
 
+-- cacheFactors x = (f, x) where f[i] is the list of factors of i
+allFactors :: [[Int]]
+allFactors = []:(map factors [1..]) -- head is [] so that the ith zero-based item is the answer to factors i
+
 -- is the number invalid, which means its some other number whose digits are concatenated twice
-invalid :: Int -> Bool
-invalid n = or (map ((==) sn) repeats)
+invalid :: [[Int]] -> Int -> Bool
+invalid factorsCache n = or (map ((==) sn) repeats)
   where sn = show n
         numDigits = length sn
         -- don't include any chunk size that's the full length because that's the whole number and not repeated
-        chunkSizes = filter ((/=) numDigits) $ factors numDigits
+        chunkSizes = filter ((/=) numDigits) $ factorsCache !! numDigits
         -- units are the possible repeating components
         units = [take x sn | x <- chunkSizes]
         -- all possible repeat pattens tha may or may not be equal to n
