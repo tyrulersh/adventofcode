@@ -1,10 +1,11 @@
-import Data.List (nub, sortBy, (\\))
+import Data.List (nub, sortBy, (\\), sort, inits, find)
 import Data.List.Split (splitOn)
+import Data.Ord (comparing)
 
 main :: IO ()
 main = interact (selector . lines)
   where selector ("part1":count:junctions) = show $ part1 (map readJunction junctions) (read count)
-        selector ("part2":ws) = "123"
+        selector ("part2":junctions) = show $ part2 $ map readJunction junctions
 
 type Junction = (Int,Int,Int)
 type Metric = Junction -> Junction -> Double
@@ -18,15 +19,38 @@ readJunction = toTuple . map read . splitOn ","
   where toTuple [x,y,z] = (x,y,z)
 
 part1 :: [Junction] -> Int -> Int
-part1 junctions count = product $ map length $ take 3 $ sortBy largestCircuit circuits
+part1 junctions count = product $ map length $ take 3 $ sortBy (flip (comparing length)) circuits
   where edgesToConnect = take count $ sortBy smallestEdge $ edges euclidean junctions
         circuits = connect edgesToConnect
 
+part2 :: [Junction] -> Int
+part2 junctions = product $ map (fst3 . (!!) junctions) [i,j]
+  where allEdges = sortBy smallestEdge $ edges euclidean junctions
+        (_,i,j) = last firstEdgeTailsWithAllNodes
+        Just firstEdgeTailsWithAllNodes = findBs containsAllJunctions $ drop minSpanningTreeSize $ inits allEdges
+        -- minimum spanning trees need to have exactly n-1 edges for n nodes, so we can short circuit for any less
+        minSpanningTreeSize = (length junctions) - 1
+        containsAllJunctions es = length es >= minSpanningTreeSize && ((length $ nub $ concat [[p,q] | (_,p,q) <- es]) == length junctions)
+
+-- finds the leftmost element matching the given predicate, using binary search
+-- Note that since operations on haskell lists are mainly linear, this binary
+-- search is useful only if the preedicate function is computationally expensive
+findBs :: (a -> Bool) -> [a] -> Maybe a
+findBs predicate xs
+  | length xs <= 2 = find predicate xs
+  | predicate middle = findBs predicate lower
+  | otherwise = findBs predicate upper
+    where middle = xs !! middleIndex
+          middleIndex = quot (length xs) 2
+          -- since trying to find the leftmost matching the predicate, use middleIndex+1 so that
+          -- middle is included in lower because middle could be the leftmost
+          (lower, upper) = splitAt (middleIndex + 1) xs
+
+fst3 :: Junction -> Int
+fst3 (x,_,_) = x
+
 smallestEdge :: Edge -> Edge -> Ordering
 smallestEdge (d,_,_) (d',_,_) = compare d d'
-
-largestCircuit :: Circuit -> Circuit -> Ordering
-largestCircuit x y = (flip compare) (length x) (length y)
 
 connect :: [Edge] -> [Circuit]
 connect es = connect' nodes
@@ -36,6 +60,12 @@ connect es = connect' nodes
         connect' (n:ns) = reachableFromN:(connect' ns')
           where reachableFromN = reachable n allNeighbors
                 ns' = ns \\ reachableFromN
+
+connectWhile :: ([Edge] -> Bool) -> [Edge] -> [Edge]
+connectWhile = connectWhile' []
+  where connectWhile' current predicate es
+          | predicate current = current
+          | otherwise = []
 
 neighbors :: [Edge] -> [[Int]]
 neighbors es = map findNeighbors [0..maxIndex]
